@@ -8,6 +8,7 @@ import PDFViewer from '@/components/PDFViewer';
 import ElevenLabsSetup from '@/components/ElevenLabsSetup';
 import { Button } from '@/components/ui/button';
 import { elevenLabsService } from '@/services/elevenLabsService';
+import { imageGenerationService } from '@/services/imageGenerationService';
 
 const Upload = () => {
   const { toast } = useToast();
@@ -47,8 +48,9 @@ const Upload = () => {
       // In a real implementation, this would use a PDF extraction library
       // For now, we'll simulate processing with a timeout
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const simulatedText = "Once upon a time, in a village nestled between towering mountains and deep forests, there lived a young girl named Elara. With fiery red hair and eyes that sparkled like emeralds, she was known for her boundless curiosity and adventurous spirit.";
+      const simulatedText = "Once upon a time, in a village nestled between towering mountains and deep forests, there lived a young girl named Elara. With fiery red hair and eyes that sparkled like emeralds, she was known for her boundless curiosity and adventurous spirit. Every morning, she would venture into the ancient forest, collecting herbs and listening to the whispers of the trees. The villagers often warned her about the dangers that lurked in the shadows, but Elara's fearless heart knew no bounds.";
       setPdfText(simulatedText);
+      
       toast({
         title: "Processing Complete",
         description: "Your PDF has been processed successfully"
@@ -74,8 +76,8 @@ const Upload = () => {
       return;
     }
 
-    const apiKey = elevenLabsService.getApiKey();
-    if (!apiKey) {
+    const elevenLabsApiKey = elevenLabsService.getApiKey();
+    if (!elevenLabsApiKey) {
       toast({
         title: "API Key Required",
         description: "Please set your ElevenLabs API key first",
@@ -87,7 +89,13 @@ const Upload = () => {
     setIsAnimating(true);
     
     try {
-      // Generate speech from the text
+      // Split text into paragraphs
+      const paragraphs = pdfText
+        .split(/(?<=\.)\s+/)
+        .filter(para => para.trim().length > 0);
+        
+      // Generate speech for all paragraphs combined (for now)
+      // In a more advanced implementation, we could generate audio for each paragraph separately
       const audio = await elevenLabsService.textToSpeech(pdfText);
       
       if (audio) {
