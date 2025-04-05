@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -24,6 +25,13 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				bookverse: {
+					primary: '#1A1F2C',    // Deep navy blue
+					secondary: '#8B5CF6',  // Vibrant purple
+					accent: '#FEC6A1',     // Soft peach
+					gold: '#FEF7CD',       // Warm gold
+					light: '#F1F0FB',      // Soft light background
+				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -84,11 +92,34 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'page-turn': {
+					'0%': {
+						transform: 'rotateY(0deg)',
+						opacity: '1'
+					},
+					'50%': {
+						opacity: '0.5'
+					},
+					'100%': {
+						transform: 'rotateY(180deg)',
+						opacity: '1'
+					}
+				},
+				'float': {
+					'0%, 100%': {
+						transform: 'translateY(0)'
+					},
+					'50%': {
+						transform: 'translateY(-10px)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'page-turn': 'page-turn 1.5s ease-in-out',
+				'float': 'float 3s ease-in-out infinite'
 			}
 		}
 	},

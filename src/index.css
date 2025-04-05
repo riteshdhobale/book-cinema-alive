@@ -1,6 +1,9 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -97,5 +100,32 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', serif;
+  }
+  
+  .hero-gradient {
+    background: linear-gradient(135deg, #1A1F2C 0%, #8B5CF6 100%);
+  }
+  
+  .book-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .book-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+
+  .feature-card {
+    transition: transform 0.3s ease;
+    border-radius: 12px;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-5px);
   }
 }
