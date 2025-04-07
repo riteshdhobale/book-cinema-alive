@@ -15,6 +15,8 @@ interface PDFViewerProps {
   audioElements?: HTMLAudioElement[];
   onPlay?: () => void;
   onPause?: () => void;
+  onStartStory?: () => void;
+  isAudioReady?: boolean;
 }
 
 const PDFViewer = ({ 
@@ -27,7 +29,9 @@ const PDFViewer = ({
   onParagraphChange,
   audioElements = [],
   onPlay,
-  onPause
+  onPause,
+  onStartStory,
+  isAudioReady = false
 }: PDFViewerProps) => {
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -83,10 +87,11 @@ const PDFViewer = ({
     
     // Apply mute state to audio elements
     if (audioElements && audioElements.length > 0) {
-      const currentAudio = audioElements[currentParagraph];
-      if (currentAudio) {
-        currentAudio.muted = !isMuted;
-      }
+      audioElements.forEach(audio => {
+        if (audio) {
+          audio.muted = !isMuted;
+        }
+      });
     }
   };
 
@@ -113,6 +118,13 @@ const PDFViewer = ({
   const handlePreviousParagraph = () => {
     if (onParagraphChange && paragraphs.length > 0 && currentParagraph > 0) {
       onParagraphChange(currentParagraph - 1);
+    }
+  };
+
+  // Start story handler
+  const handleStartStory = () => {
+    if (onStartStory) {
+      onStartStory();
     }
   };
 
@@ -190,12 +202,23 @@ const PDFViewer = ({
             )}
           </div>
           
+          {/* Start Story button - prominently displayed when everything is ready */}
+          {isAudioReady && !isAnimating && paragraphs.length > 0 && imageUrls.length > 0 && (
+            <Button 
+              onClick={handleStartStory}
+              className="w-full bg-bookverse-primary text-white hover:bg-bookverse-primary/90 py-2 text-lg"
+            >
+              <Play className="mr-2 h-5 w-5" /> Start Story
+            </Button>
+          )}
+          
           <div className="flex items-center space-x-2">
             <Button 
               variant="outline" 
               size="sm" 
               className="rounded-full" 
               onClick={togglePlay}
+              disabled={!isAudioReady}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
@@ -205,6 +228,7 @@ const PDFViewer = ({
               size="sm" 
               className="rounded-full" 
               onClick={toggleMute}
+              disabled={!isAudioReady}
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
@@ -215,7 +239,7 @@ const PDFViewer = ({
                 size="sm" 
                 className="rounded-full" 
                 onClick={handlePreviousParagraph}
-                disabled={currentParagraph === 0 || paragraphs.length === 0}
+                disabled={currentParagraph === 0 || paragraphs.length === 0 || !isAudioReady}
               >
                 <SkipBack className="h-4 w-4" />
               </Button>
@@ -225,7 +249,7 @@ const PDFViewer = ({
                 size="sm" 
                 className="rounded-full" 
                 onClick={handleNextParagraph}
-                disabled={currentParagraph === paragraphs.length - 1 || paragraphs.length === 0}
+                disabled={currentParagraph === paragraphs.length - 1 || paragraphs.length === 0 || !isAudioReady}
               >
                 <SkipForward className="h-4 w-4" />
               </Button>

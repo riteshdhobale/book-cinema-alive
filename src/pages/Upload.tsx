@@ -23,6 +23,8 @@ const Upload = () => {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [audioElements, setAudioElements] = useState<HTMLAudioElement[]>([]);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [isAudioReady, setIsAudioReady] = useState(false);
+  const [isValidatingApiKey, setIsValidatingApiKey] = useState(false);
 
   // Reset audio playback when component unmounts
   useEffect(() => {
@@ -36,6 +38,35 @@ const Upload = () => {
     };
   }, [audioElements, currentAudio]);
 
+  // Validate API key on component mount
+  useEffect(() => {
+    const validateApiKeys = async () => {
+      setIsValidatingApiKey(true);
+      const elevenLabsApiKey = elevenLabsService.getApiKey();
+      
+      if (elevenLabsApiKey) {
+        const isValid = await elevenLabsService.validateApiKey();
+        
+        if (!isValid) {
+          toast({
+            title: "API Key Issue",
+            description: "Your ElevenLabs API key appears to be invalid. Please check and update it.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "API Key Valid",
+            description: "Your ElevenLabs API key is valid and ready to use.",
+          });
+        }
+      }
+      
+      setIsValidatingApiKey(false);
+    };
+    
+    validateApiKeys();
+  }, [toast]);
+
   const handleFileUpload = (file: File) => {
     setPdfFile(file);
     setPdfText(''); // Clear any previous text
@@ -44,6 +75,7 @@ const Upload = () => {
     setImageUrls([]); // Clear any previous images
     setIsAnimating(false); // Reset animation state
     setAudioElements([]); // Clear any previous audio elements
+    setIsAudioReady(false); // Reset audio ready state
     
     if (currentAudio) {
       currentAudio.pause();
@@ -173,14 +205,14 @@ const Upload = () => {
     }
   };
 
-  const handleAnimate = async () => {
+  const preloadAudioContent = async () => {
     if (!pdfText || paragraphs.length === 0) {
       toast({
         title: "No Content",
         description: "Please process your PDF first",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     const elevenLabsApiKey = elevenLabsService.getApiKey();
@@ -190,7 +222,7 @@ const Upload = () => {
         description: "Please set your ElevenLabs API key first",
         variant: "destructive"
       });
-      return;
+      return false;
     }
 
     // Check if we have images for each paragraph
@@ -200,12 +232,14 @@ const Upload = () => {
         description: "Please generate images for your content first",
         variant: "destructive"
       });
-      return;
+      return false;
     }
-
-    setIsAnimating(true);
-    setCurrentParagraph(0);
     
+    toast({
+      title: "Preparing Audio",
+      description: "Generating voice narrations for your story..."
+    });
+
     try {
       const audioArray: HTMLAudioElement[] = [];
       
@@ -219,8 +253,7 @@ const Upload = () => {
         if (audio) {
           // Make sure volume is set initially
           audio.volume = 0.8;
-          
-          audioArray.push(audio);
+          console.log(`Audio prepared for paragraph ${i}`);
           
           // Set up audio end event for the current paragraph
           audio.onended = () => {
@@ -229,6 +262,7 @@ const Upload = () => {
             if (i < paragraphs.length - 1) {
               setCurrentParagraph(i + 1);
               if (audioArray[i + 1]) {
+                console.log(`Playing audio for paragraph ${i + 1}`);
                 audioArray[i + 1].play().catch(err => console.error("Error playing audio:", err));
                 setCurrentAudio(audioArray[i + 1]);
               }
@@ -242,31 +276,80 @@ const Upload = () => {
               });
             }
           };
+          
+          audioArray.push(audio);
+        } else {
+          console.error(`Failed to generate audio for paragraph ${i}`);
         }
       }
       
       setAudioElements(audioArray);
-      
-      // Start playing the first paragraph
-      if (audioArray.length > 0) {
-        console.log("Starting playback of first paragraph");
-        audioArray[0].play().catch(err => console.error("Error playing first audio:", err));
-        setCurrentAudio(audioArray[0]);
-      }
+      setIsAudioReady(true);
       
       toast({
-        title: "Animation Started",
-        description: "Your content is now being narrated and animated"
+        title: "Audio Ready",
+        description: "Your story is ready to be narrated. Click 'Start Story' to begin."
       });
+      
+      return true;
     } catch (error) {
       console.error(error);
-      setIsAnimating(false);
       toast({
-        title: "Animation Failed",
-        description: "An error occurred while animating your content",
+        title: "Audio Preparation Failed",
+        description: "An error occurred while preparing audio for your content",
         variant: "destructive"
       });
+      return false;
     }
+  };
+
+  const handleAnimate = async () => {
+    const success = await preloadAudioContent();
+    if (!success) return;
+  };
+  
+  const handleStartStory = () => {
+    if (!isAudioReady || audioElements.length === 0) {
+      toast({
+        title: "Not Ready",
+        description: "Please wait for audio preparation to complete",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setCurrentParagraph(0);
+    setIsAnimating(true);
+    
+    // Start playing the first paragraph
+    if (audioElements.length > 0) {
+      console.log("Starting playback of first paragraph");
+      
+      // Try to interact with the audio context first to avoid autoplay restrictions
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext.resume().then(() => {
+        if (audioElements[0]) {
+          audioElements[0].play()
+            .then(() => {
+              console.log("Audio playback started successfully");
+              setCurrentAudio(audioElements[0]);
+            })
+            .catch(err => {
+              console.error("Error playing first audio:", err);
+              toast({
+                title: "Audio Playback Failed",
+                description: "There was an issue starting audio playback. Try clicking on the page first.",
+                variant: "destructive"
+              });
+            });
+        }
+      });
+    }
+    
+    toast({
+      title: "Story Started",
+      description: "Your story is now being narrated and animated"
+    });
   };
 
   const handleParagraphChange = (index: number) => {
@@ -283,12 +366,13 @@ const Upload = () => {
         audioElements[index].currentTime = 0; // Start from beginning
         audioElements[index].play().catch(err => console.error("Error playing audio after paragraph change:", err));
         setCurrentAudio(audioElements[index]);
+        setIsAnimating(true);
       }
     }
   };
 
   const handlePlay = () => {
-    if (currentAudio && !isAnimating) {
+    if (currentAudio && audioElements.length > 0) {
       currentAudio.play().catch(err => console.error("Error on play button:", err));
       setIsAnimating(true);
     }
@@ -301,11 +385,26 @@ const Upload = () => {
     }
   };
 
-  const handleApiKeySet = () => {
+  const handleApiKeySet = async () => {
     toast({
-      title: "Ready for Text-to-Speech",
-      description: "You can now convert your PDF text to speech"
+      title: "Validating API Key",
+      description: "Checking your ElevenLabs API key..."
     });
+    
+    const isValid = await elevenLabsService.validateApiKey();
+    
+    if (isValid) {
+      toast({
+        title: "API Key Valid",
+        description: "Your ElevenLabs API key is valid and ready to use"
+      });
+    } else {
+      toast({
+        title: "API Key Issue",
+        description: "Your ElevenLabs API key appears to be invalid. Please check and update it.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGeminiApiKeySet = () => {
@@ -360,13 +459,14 @@ const Upload = () => {
                   disabled={
                     !pdfText || 
                     paragraphs.length === 0 || 
-                    isAnimating || 
+                    isAudioReady || 
                     !elevenLabsService.getApiKey() || 
                     imageUrls.length === 0 || 
-                    imageUrls.length !== paragraphs.length
+                    imageUrls.length !== paragraphs.length ||
+                    isValidatingApiKey
                   }
                 >
-                  {isAnimating ? "Narrating..." : "Narrate & Animate"}
+                  {isAudioReady ? "Audio Ready ✓" : "Prepare Audio Narration"}
                 </Button>
               </div>
             </div>
@@ -385,6 +485,8 @@ const Upload = () => {
                   audioElements={audioElements}
                   onPlay={handlePlay}
                   onPause={handlePause}
+                  onStartStory={handleStartStory}
+                  isAudioReady={isAudioReady}
                 />
               ) : (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center text-gray-500">
@@ -402,7 +504,8 @@ const Upload = () => {
               <li>Set up your ElevenLabs API key for text-to-speech</li>
               <li>Set up your Google Gemini API key for image generation</li>
               <li>Click "Generate Visualizations" to create scene images</li>
-              <li>Click "Narrate & Animate" to transform your content into an interactive story</li>
+              <li>Click "Prepare Audio Narration" to generate the audio files</li>
+              <li>Click "Start Story" to begin the narrated animation</li>
               <li>Use the playback controls to navigate through your story</li>
             </ol>
             <p className="mt-4 text-sm text-gray-600">

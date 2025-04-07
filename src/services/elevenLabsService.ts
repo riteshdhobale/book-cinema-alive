@@ -56,6 +56,7 @@ class ElevenLabsService {
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
     
     try {
+      console.log('Generating speech with ElevenLabs API...', { voiceId, modelId });
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -75,6 +76,7 @@ class ElevenLabsService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('ElevenLabs API error:', response.status, errorText);
         throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
       }
 
@@ -87,8 +89,7 @@ class ElevenLabsService {
 
   async textToSpeech(text: string, options?: TTSOptions): Promise<HTMLAudioElement | null> {
     try {
-      // For testing purposes, we'll use placeholder audio with the Web Speech API
-      // This helps ensure audio works without requiring API calls
+      // For testing purposes with Web Speech API in development
       if (process.env.NODE_ENV === 'development') {
         console.log('Using Web Speech API for development');
         const audio = new Audio();
@@ -105,9 +106,9 @@ class ElevenLabsService {
           window.speechSynthesis.speak(speech);
         });
         
-        // Set up dummy audio element with events
+        // Set up audio element with events
         audio.onended = () => {
-          console.log('Audio ended');
+          console.log('Web Speech Audio ended');
         };
         
         // Store the speech promise in a property of the audio element
@@ -117,6 +118,7 @@ class ElevenLabsService {
         // Method to start playing
         // @ts-ignore - Adding custom method for development
         audio.play = async () => {
+          console.log('Playing Web Speech audio');
           if (window.speechSynthesis.paused) {
             window.speechSynthesis.resume();
           } else {
@@ -129,6 +131,7 @@ class ElevenLabsService {
         // Method to pause
         // @ts-ignore - Adding custom method for development
         audio.pause = () => {
+          console.log('Pausing Web Speech audio');
           window.speechSynthesis.pause();
         };
         
@@ -136,23 +139,65 @@ class ElevenLabsService {
       }
       
       // Actual ElevenLabs implementation
+      console.log('Generating audio with ElevenLabs...');
       const audioData = await this.generateSpeech(text, options);
       
       if (!audioData) {
+        console.error('Failed to get audio data from ElevenLabs');
         return null;
       }
       
       // Convert the ArrayBuffer to a Blob
       const blob = new Blob([audioData], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
       
       // Create an audio element and set its source to the blob
-      const audio = new Audio();
-      audio.src = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      
+      // Add event listeners for debugging
+      audio.addEventListener('canplaythrough', () => {
+        console.log('Audio is ready to play through without buffering');
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+      });
+      
+      audio.addEventListener('ended', () => {
+        console.log('Audio playback ended');
+        URL.revokeObjectURL(url);
+      });
+      
+      // Preload the audio
+      audio.preload = 'auto';
       
       return audio;
     } catch (error) {
       console.error('Error in text-to-speech process:', error);
       return null;
+    }
+  }
+  
+  // Helper method to validate if the API key is working
+  async validateApiKey(): Promise<boolean> {
+    const apiKey = this.getApiKey();
+    
+    if (!apiKey) {
+      return false;
+    }
+    
+    try {
+      // Make a small request to test the API key
+      const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: {
+          'xi-api-key': apiKey
+        }
+      });
+      
+      return response.ok;
+    } catch (error) {
+      console.error('Error validating ElevenLabs API key:', error);
+      return false;
     }
   }
 }

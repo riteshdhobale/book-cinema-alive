@@ -7,6 +7,7 @@ import Library from '@/components/Library';
 import DemoSection from '@/components/DemoSection';
 import CTA from '@/components/CTA';
 import Footer from '@/components/Footer';
+import { Play } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -48,9 +49,9 @@ const Index = () => {
                 <div>
                   <a 
                     href="/upload" 
-                    className="px-4 py-2 bg-bookverse-primary text-white rounded-md hover:bg-bookverse-primary/90 transition-colors"
+                    className="inline-flex items-center px-4 py-2 bg-bookverse-primary text-white rounded-md hover:bg-bookverse-primary/90 transition-colors"
                   >
-                    Try It Now
+                    <Play className="mr-2 h-4 w-4" /> Try It Now
                   </a>
                 </div>
               </div>
