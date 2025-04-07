@@ -38,6 +38,10 @@ const Index = () => {
                   </li>
                   <li className="flex items-center">
                     <span className="mr-2 text-green-500">✓</span>
+                    <span>Full playback controls with play, pause, and navigation</span>
+                  </li>
+                  <li className="flex items-center">
+                    <span className="mr-2 text-green-500">✓</span>
                     <span>ElevenLabs voice narration for immersive audio</span>
                   </li>
                 </ul>

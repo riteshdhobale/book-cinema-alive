@@ -12,6 +12,9 @@ interface PDFViewerProps {
   paragraphs?: string[];
   imageUrls?: string[];
   onParagraphChange?: (index: number) => void;
+  audioElements?: HTMLAudioElement[];
+  onPlay?: () => void;
+  onPause?: () => void;
 }
 
 const PDFViewer = ({ 
@@ -21,7 +24,10 @@ const PDFViewer = ({
   currentParagraph = 0,
   paragraphs = [],
   imageUrls = [],
-  onParagraphChange 
+  onParagraphChange,
+  audioElements = [],
+  onPlay,
+  onPause
 }: PDFViewerProps) => {
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -61,18 +67,41 @@ const PDFViewer = ({
   }, [isAnimating]);
   
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-    // In a real implementation, this would control the TTS and animation
+    const newPlayState = !isPlaying;
+    setIsPlaying(newPlayState);
+    
+    // Call the appropriate parent handler
+    if (newPlayState) {
+      if (onPlay) onPlay();
+    } else {
+      if (onPause) onPause();
+    }
   };
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
-    // In a real implementation, this would control the audio
+    
+    // Apply mute state to audio elements
+    if (audioElements && audioElements.length > 0) {
+      const currentAudio = audioElements[currentParagraph];
+      if (currentAudio) {
+        currentAudio.muted = !isMuted;
+      }
+    }
   };
 
   const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0]);
-    // In a real implementation, this would adjust the TTS volume
+    const newVolume = value[0];
+    setVolume(newVolume);
+    
+    // Apply volume to audio elements
+    if (audioElements && audioElements.length > 0) {
+      audioElements.forEach(audio => {
+        if (audio) {
+          audio.volume = newVolume / 100;
+        }
+      });
+    }
   };
 
   const handleNextParagraph = () => {

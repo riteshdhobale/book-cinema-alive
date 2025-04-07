@@ -87,6 +87,55 @@ class ElevenLabsService {
 
   async textToSpeech(text: string, options?: TTSOptions): Promise<HTMLAudioElement | null> {
     try {
+      // For testing purposes, we'll use placeholder audio with the Web Speech API
+      // This helps ensure audio works without requiring API calls
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using Web Speech API for development');
+        const audio = new Audio();
+        
+        // Create speech synthesis for development testing
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.rate = 1;
+        speech.pitch = 1;
+        speech.volume = 1;
+        
+        // Convert the speech to audio
+        const speechPromise = new Promise<void>((resolve) => {
+          speech.onend = () => resolve();
+          window.speechSynthesis.speak(speech);
+        });
+        
+        // Set up dummy audio element with events
+        audio.onended = () => {
+          console.log('Audio ended');
+        };
+        
+        // Store the speech promise in a property of the audio element
+        // @ts-ignore - Adding custom property for development
+        audio.speechPromise = speechPromise;
+        
+        // Method to start playing
+        // @ts-ignore - Adding custom method for development
+        audio.play = async () => {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          } else {
+            speech.rate = 1;
+            window.speechSynthesis.speak(speech);
+          }
+          return Promise.resolve();
+        };
+        
+        // Method to pause
+        // @ts-ignore - Adding custom method for development
+        audio.pause = () => {
+          window.speechSynthesis.pause();
+        };
+        
+        return audio;
+      }
+      
+      // Actual ElevenLabs implementation
       const audioData = await this.generateSpeech(text, options);
       
       if (!audioData) {

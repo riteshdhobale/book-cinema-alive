@@ -217,15 +217,21 @@ const Upload = () => {
         const audio = await elevenLabsService.textToSpeech(paragraph);
         
         if (audio) {
+          // Make sure volume is set initially
+          audio.volume = 0.8;
+          
           audioArray.push(audio);
           
           // Set up audio end event for the current paragraph
           audio.onended = () => {
+            console.log(`Audio for paragraph ${i} ended`);
             // Move to the next paragraph when audio finishes
             if (i < paragraphs.length - 1) {
               setCurrentParagraph(i + 1);
-              audioArray[i + 1].play();
-              setCurrentAudio(audioArray[i + 1]);
+              if (audioArray[i + 1]) {
+                audioArray[i + 1].play().catch(err => console.error("Error playing audio:", err));
+                setCurrentAudio(audioArray[i + 1]);
+              }
             } else {
               // End of story
               setIsAnimating(false);
@@ -243,7 +249,8 @@ const Upload = () => {
       
       // Start playing the first paragraph
       if (audioArray.length > 0) {
-        audioArray[0].play();
+        console.log("Starting playback of first paragraph");
+        audioArray[0].play().catch(err => console.error("Error playing first audio:", err));
         setCurrentAudio(audioArray[0]);
       }
       
@@ -274,9 +281,23 @@ const Upload = () => {
       // Play the selected paragraph audio
       if (audioElements && audioElements[index]) {
         audioElements[index].currentTime = 0; // Start from beginning
-        audioElements[index].play();
+        audioElements[index].play().catch(err => console.error("Error playing audio after paragraph change:", err));
         setCurrentAudio(audioElements[index]);
       }
+    }
+  };
+
+  const handlePlay = () => {
+    if (currentAudio && !isAnimating) {
+      currentAudio.play().catch(err => console.error("Error on play button:", err));
+      setIsAnimating(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      setIsAnimating(false);
     }
   };
 
@@ -361,6 +382,9 @@ const Upload = () => {
                   currentParagraph={currentParagraph}
                   imageUrls={imageUrls}
                   onParagraphChange={handleParagraphChange}
+                  audioElements={audioElements}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
                 />
               ) : (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center text-gray-500">
