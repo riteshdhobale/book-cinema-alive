@@ -7,7 +7,7 @@ import Library from '@/components/Library';
 import DemoSection from '@/components/DemoSection';
 import CTA from '@/components/CTA';
 import Footer from '@/components/Footer';
-import { Play } from 'lucide-react';
+import { Play, BookOpen, Sparkles } from 'lucide-react';
 
 const Index = () => {
   return (
@@ -30,8 +30,8 @@ const Index = () => {
                 </p>
                 <ul className="space-y-2 mb-6">
                   <li className="flex items-center">
-                    <span className="mr-2 text-green-500">✓</span>
-                    <span>Google Gemini AI for stunning visualizations</span>
+                    <Sparkles className="mr-2 h-4 w-4 text-green-500" />
+                    <span>Google Gemini AI analyzes story content and scenes</span>
                   </li>
                   <li className="flex items-center">
                     <span className="mr-2 text-green-500">✓</span>
@@ -45,6 +45,10 @@ const Index = () => {
                     <span className="mr-2 text-green-500">✓</span>
                     <span>ElevenLabs voice narration for immersive audio</span>
                   </li>
+                  <li className="flex items-center">
+                    <BookOpen className="mr-2 h-4 w-4 text-green-500" />
+                    <span>Contextual scene illustrations that match narrative</span>
+                  </li>
                 </ul>
                 <div>
                   <a 
@@ -56,11 +60,25 @@ const Index = () => {
                 </div>
               </div>
               <div className="bg-gray-100 p-6 flex items-center justify-center">
-                <img 
-                  src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop"
-                  alt="AI-powered story visualization" 
-                  className="w-full h-64 object-cover rounded-md"
-                />
+                <div className="relative w-full h-64 overflow-hidden rounded-md">
+                  <img 
+                    src="https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop"
+                    alt="AI-powered story visualization" 
+                    className="w-full h-64 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4 text-white">
+                    <div className="flex items-center mb-2 space-x-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium">Now Playing</span>
+                    </div>
+                    <p className="text-sm opacity-90">
+                      "The book whispered its secrets as the illustrations came to life, each page turning into a vivid scene..."
+                    </p>
+                    <div className="mt-2 h-1 bg-white/30 rounded-full w-full">
+                      <div className="h-full bg-white rounded-full w-3/4"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

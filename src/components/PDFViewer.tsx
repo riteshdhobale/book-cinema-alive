@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Play, Pause, Volume2, VolumeX, SkipForward, SkipBack } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, SkipForward, SkipBack, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -38,6 +38,7 @@ const PDFViewer = ({
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(80);
+  const [imageLoaded, setImageLoaded] = useState(false);
   
   useEffect(() => {
     // Create a URL for the PDF file
@@ -51,6 +52,11 @@ const PDFViewer = ({
   }, [pdfFile]);
 
   useEffect(() => {
+    // Reset image loaded state when changing paragraphs
+    setImageLoaded(false);
+  }, [currentParagraph]);
+
+  useEffect(() => {
     if (isAnimating) {
       setIsPlaying(true);
       // Simulate animation progress
@@ -59,7 +65,6 @@ const PDFViewer = ({
           const newProgress = prev + 1;
           if (newProgress >= 100) {
             clearInterval(interval);
-            setIsPlaying(false);
             return 100;
           }
           return newProgress;
@@ -67,6 +72,8 @@ const PDFViewer = ({
       }, 300);
       
       return () => clearInterval(interval);
+    } else {
+      setIsPlaying(false);
     }
   }, [isAnimating]);
   
@@ -128,16 +135,26 @@ const PDFViewer = ({
     }
   };
 
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
   return (
     <div className="space-y-4">
       {pdfUrl && (
         <div className="relative border rounded-lg overflow-hidden" style={{ height: '300px' }}>
           {imageUrls && imageUrls[currentParagraph] ? (
             <div className="w-full h-full relative">
+              {!imageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                  <Loader2 className="h-8 w-8 animate-spin text-bookverse-primary" />
+                </div>
+              )}
               <img 
                 src={imageUrls[currentParagraph]} 
                 alt={`Visualization for paragraph ${currentParagraph + 1}`}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={handleImageLoad}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
                 <div className="text-white text-sm">
@@ -193,9 +210,12 @@ const PDFViewer = ({
               <>
                 <div className="flex justify-between items-center mb-2 text-xs text-gray-500">
                   <span>Paragraph {currentParagraph + 1} of {paragraphs.length}</span>
-                  <span>{Math.floor(progress)}% complete</span>
+                  {isAudioReady && <span className="text-green-500 flex items-center">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                    Audio Ready
+                  </span>}
                 </div>
-                <p className="font-medium">{paragraphs[currentParagraph]}</p>
+                <p className={`font-medium ${isPlaying ? 'text-bookverse-primary' : ''}`}>{paragraphs[currentParagraph]}</p>
               </>
             ) : (
               pdfText
@@ -206,7 +226,7 @@ const PDFViewer = ({
           {isAudioReady && !isAnimating && paragraphs.length > 0 && imageUrls.length > 0 && (
             <Button 
               onClick={handleStartStory}
-              className="w-full bg-bookverse-primary text-white hover:bg-bookverse-primary/90 py-2 text-lg"
+              className="w-full bg-bookverse-primary text-white hover:bg-bookverse-primary/90 py-2 text-lg animate-pulse"
             >
               <Play className="mr-2 h-5 w-5" /> Start Story
             </Button>
@@ -216,9 +236,10 @@ const PDFViewer = ({
             <Button 
               variant="outline" 
               size="sm" 
-              className="rounded-full" 
+              className={`rounded-full ${isPlaying ? 'bg-bookverse-primary text-white hover:bg-bookverse-primary/90' : ''}`}
               onClick={togglePlay}
               disabled={!isAudioReady}
+              title={isAudioReady ? (isPlaying ? "Pause" : "Play") : "Audio not ready"}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
@@ -229,6 +250,7 @@ const PDFViewer = ({
               className="rounded-full" 
               onClick={toggleMute}
               disabled={!isAudioReady}
+              title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
@@ -240,6 +262,7 @@ const PDFViewer = ({
                 className="rounded-full" 
                 onClick={handlePreviousParagraph}
                 disabled={currentParagraph === 0 || paragraphs.length === 0 || !isAudioReady}
+                title="Previous paragraph"
               >
                 <SkipBack className="h-4 w-4" />
               </Button>
@@ -250,6 +273,7 @@ const PDFViewer = ({
                 className="rounded-full" 
                 onClick={handleNextParagraph}
                 disabled={currentParagraph === paragraphs.length - 1 || paragraphs.length === 0 || !isAudioReady}
+                title="Next paragraph"
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
@@ -263,10 +287,19 @@ const PDFViewer = ({
                 value={[volume]}
                 onValueChange={handleVolumeChange}
                 className="flex-grow"
+                disabled={!isAudioReady}
               />
               <span className="text-xs w-8">{volume}%</span>
             </div>
           </div>
+          
+          {/* Audio preparation status indicator */}
+          {!isAudioReady && paragraphs.length > 0 && (
+            <div className="text-sm text-amber-600 flex items-center justify-center p-2 bg-amber-50 border border-amber-200 rounded-md">
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Please complete audio preparation before playing
+            </div>
+          )}
         </div>
       )}
     </div>

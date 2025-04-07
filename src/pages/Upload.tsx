@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import Navbar from '@/components/Navbar';
@@ -26,7 +25,6 @@ const Upload = () => {
   const [isAudioReady, setIsAudioReady] = useState(false);
   const [isValidatingApiKey, setIsValidatingApiKey] = useState(false);
 
-  // Reset audio playback when component unmounts
   useEffect(() => {
     return () => {
       if (currentAudio) {
@@ -38,7 +36,6 @@ const Upload = () => {
     };
   }, [audioElements, currentAudio]);
 
-  // Validate API key on component mount
   useEffect(() => {
     const validateApiKeys = async () => {
       setIsValidatingApiKey(true);
@@ -88,12 +85,8 @@ const Upload = () => {
     });
   };
 
-  // Split text into paragraphs
   const splitIntoParagraphs = (text: string): string[] => {
-    // Split by double newlines to get paragraphs
     const rawParagraphs = text.split(/\n\s*\n/);
-    
-    // Filter out empty paragraphs and trim whitespace
     return rawParagraphs
       .map(p => p.trim())
       .filter(p => p.length > 0);
@@ -111,8 +104,6 @@ const Upload = () => {
 
     setIsProcessing(true);
     try {
-      // In a real implementation, this would use a PDF extraction library
-      // For now, we'll simulate processing with a timeout and sample text
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const simulatedText = "Once upon a time, in a village nestled between towering mountains and deep forests, there lived a young girl named Elara. With fiery red hair and eyes that sparkled like emeralds, she was known for her boundless curiosity and adventurous spirit.\n\n" +
@@ -122,7 +113,6 @@ const Upload = () => {
       
       setPdfText(simulatedText);
       
-      // Split the text into paragraphs
       const paragraphArray = splitIntoParagraphs(simulatedText);
       setParagraphs(paragraphArray);
       
@@ -166,7 +156,20 @@ const Upload = () => {
     try {
       const images: string[] = [];
       
-      // Generate an image for each paragraph
+      toast({
+        title: "Analyzing Content",
+        description: "Gemini is analyzing your story content..."
+      });
+      
+      const contentAnalysis = await geminiService.analyzeContent(pdfText);
+      
+      if (contentAnalysis) {
+        toast({
+          title: "Content Analysis Complete",
+          description: contentAnalysis.summary
+        });
+      }
+      
       for (let i = 0; i < paragraphs.length; i++) {
         const paragraph = paragraphs[i];
         toast({
@@ -174,16 +177,14 @@ const Upload = () => {
           description: `Creating visualization for paragraph ${i + 1} of ${paragraphs.length}`
         });
         
-        // Generate prompt for the image based on the paragraph
-        const prompt = `Create a vivid, detailed scene of: ${paragraph.substring(0, 200)}`;
+        const prompt = await geminiService.generateEnhancedPrompt(paragraph, contentAnalysis);
         
-        // Generate the image using Gemini API
         const imageUrl = await geminiService.generateImage(prompt);
         
         if (imageUrl) {
           images.push(imageUrl);
         } else {
-          images.push(''); // Placeholder for failed image generation
+          images.push('');
         }
       }
       
@@ -225,7 +226,6 @@ const Upload = () => {
       return false;
     }
 
-    // Check if we have images for each paragraph
     if (imageUrls.length === 0 || imageUrls.length !== paragraphs.length) {
       toast({
         title: "Images Required",
@@ -235,6 +235,7 @@ const Upload = () => {
       return false;
     }
     
+    setIsProcessing(true);
     toast({
       title: "Preparing Audio",
       description: "Generating voice narrations for your story..."
@@ -243,22 +244,22 @@ const Upload = () => {
     try {
       const audioArray: HTMLAudioElement[] = [];
       
-      // Generate speech for each paragraph
       for (let i = 0; i < paragraphs.length; i++) {
+        toast({
+          title: "Processing Audio",
+          description: `Preparing narration for paragraph ${i + 1} of ${paragraphs.length}`,
+        });
+        
         const paragraph = paragraphs[i];
         
-        // Generate speech from the text
         const audio = await elevenLabsService.textToSpeech(paragraph);
         
         if (audio) {
-          // Make sure volume is set initially
           audio.volume = 0.8;
           console.log(`Audio prepared for paragraph ${i}`);
           
-          // Set up audio end event for the current paragraph
           audio.onended = () => {
             console.log(`Audio for paragraph ${i} ended`);
-            // Move to the next paragraph when audio finishes
             if (i < paragraphs.length - 1) {
               setCurrentParagraph(i + 1);
               if (audioArray[i + 1]) {
@@ -267,7 +268,6 @@ const Upload = () => {
                 setCurrentAudio(audioArray[i + 1]);
               }
             } else {
-              // End of story
               setIsAnimating(false);
               setCurrentAudio(null);
               toast({
@@ -280,6 +280,11 @@ const Upload = () => {
           audioArray.push(audio);
         } else {
           console.error(`Failed to generate audio for paragraph ${i}`);
+          toast({
+            title: "Audio Generation Issue",
+            description: `Couldn't generate audio for paragraph ${i + 1}`,
+            variant: "destructive"
+          });
         }
       }
       
@@ -300,6 +305,8 @@ const Upload = () => {
         variant: "destructive"
       });
       return false;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -321,11 +328,9 @@ const Upload = () => {
     setCurrentParagraph(0);
     setIsAnimating(true);
     
-    // Start playing the first paragraph
     if (audioElements.length > 0) {
       console.log("Starting playback of first paragraph");
       
-      // Try to interact with the audio context first to avoid autoplay restrictions
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContext.resume().then(() => {
         if (audioElements[0]) {
@@ -341,6 +346,22 @@ const Upload = () => {
                 description: "There was an issue starting audio playback. Try clicking on the page first.",
                 variant: "destructive"
               });
+              const unlockAudio = () => {
+                if (audioElements[0]) {
+                  audioElements[0].play()
+                    .then(() => {
+                      console.log("Audio playback started after user interaction");
+                      setCurrentAudio(audioElements[0]);
+                      document.removeEventListener('click', unlockAudio);
+                    })
+                    .catch(err => console.error("Still failed to play audio:", err));
+                }
+              };
+              document.addEventListener('click', unlockAudio);
+              toast({
+                title: "Audio Unlock Required",
+                description: "Please click anywhere on the page to start audio playback",
+              });
             });
         }
       });
@@ -354,16 +375,14 @@ const Upload = () => {
 
   const handleParagraphChange = (index: number) => {
     if (index >= 0 && index < paragraphs.length) {
-      // Stop current audio if playing
       if (currentAudio) {
         currentAudio.pause();
       }
       
       setCurrentParagraph(index);
       
-      // Play the selected paragraph audio
       if (audioElements && audioElements[index]) {
-        audioElements[index].currentTime = 0; // Start from beginning
+        audioElements[index].currentTime = 0;
         audioElements[index].play().catch(err => console.error("Error playing audio after paragraph change:", err));
         setCurrentAudio(audioElements[index]);
         setIsAnimating(true);
@@ -459,6 +478,7 @@ const Upload = () => {
                   disabled={
                     !pdfText || 
                     paragraphs.length === 0 || 
+                    isProcessing ||
                     isAudioReady || 
                     !elevenLabsService.getApiKey() || 
                     imageUrls.length === 0 || 
@@ -466,9 +486,30 @@ const Upload = () => {
                     isValidatingApiKey
                   }
                 >
-                  {isAudioReady ? "Audio Ready ✓" : "Prepare Audio Narration"}
+                  {isProcessing ? (
+                    <span className="flex items-center">
+                      <span className="animate-spin mr-2">⏳</span>
+                      Preparing Audio...
+                    </span>
+                  ) : isAudioReady ? (
+                    <span className="flex items-center">
+                      <span className="mr-2">✓</span>
+                      Audio Ready
+                    </span>
+                  ) : (
+                    "Prepare Audio Narration"
+                  )}
                 </Button>
               </div>
+              
+              {isProcessing && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex items-center">
+                    <span className="animate-pulse mr-2">🔊</span>
+                    <span className="text-sm text-blue-700">Audio preparation in progress... please wait</span>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md">
