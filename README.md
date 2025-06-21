@@ -70,7 +70,7 @@ npm run dev
 ## 🌐 Live Demo
 
 📍 Deployed on **Netlify**:  
-**[https://bookverse.netlify.app](https://bookverse.netlify.app)**
+**[https://bookverse-ai.netlify.app/](https://bookverse-ai.netlify.app/)**
 
 ---
 
